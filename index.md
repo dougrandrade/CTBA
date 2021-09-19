@@ -1,6 +1,6 @@
 ---
-title: Competing Through Business Analytics
-description: In development for future use in the MSBA program
+title: U.S. Endangered Names Repository
+description: a fun personal project
 ---
 
 
