@@ -107,7 +107,7 @@ server <- function(input, output, session) {
       MaxRec <- max(data$Records)
       year_max <- data$Year[which.max(data$Records)]
       curr_yr <- max(data$Year)
-      last_rec <- data$Records[data$Year == curr_yr]
+      input_rec <- data$Records[data$Year == input$year]
       
       ts_data <- ts(data$Records, start = min(data$Year), end = max(data$Year), frequency = 1)
       arima_fit <- auto.arima(ts_data, approximation = FALSE, stepwise = FALSE, seasonal = FALSE)
@@ -125,19 +125,23 @@ server <- function(input, output, session) {
         theme_dark() +
         
         geom_line(color = 'darkgreen', size = 1) +
+        
         geom_vline(xintercept = year_max, linetype = 'dashed', color = 'darkgray', size = 0.4) +
         annotate('text', x = year_max, y = MaxRec, 
                  label = paste(year_max, ': ', MaxRec, ' records', sep = ''), 
                  vjust = 0.5, hjust = 1.1, color = 'white', size = 5) +
-        geom_vline(xintercept = curr_yr, linetype = 'dashed', color = 'darkgray', size = 0.4) +
-        annotate('text', x = curr_yr, y = last_rec, 
-                 label = paste(curr_yr, ': ', last_rec, ' records', sep = ''), 
+        
+        geom_vline(xintercept = input$year, linetype = 'dashed', color = 'darkgray', size = 0.4) +
+        annotate('text', x = input$year, y = input_rec, 
+                 label = paste(input$year, ': ', input_rec, ' records', sep = ''), 
                  vjust = 1.5, hjust = 1.1, color = 'white', size = 5) +
+        
         geom_line(data = forecast_df, aes(x = Year, y = Records), color = 'blue', linetype = 'dashed') +
         geom_ribbon(data = forecast_df, aes(x = Year, ymin = Lower, ymax = Upper), fill = 'blue', alpha = 0.2)  +
         annotate('text', x = (curr_yr + input$forecast_years), y = round(forecast_df[input$forecast_years, 2]), 
                  label = paste(curr_yr + input$forecast_years, ':\n', round(forecast_df[input$forecast_years, 2]), ' records', sep = ''), 
                  vjust = -1, hjust = .5, color = 'white', size = 5) +
+        
         labs(title = paste(input$name, ' (', input$gender, '): Forecast & Popularity Over Time (1880-', curr_yr + input$forecast_years, ')', sep = ''),
              y = paste('Records of ', input$name, '(', input$gender, ')', sep = '')) +
         
