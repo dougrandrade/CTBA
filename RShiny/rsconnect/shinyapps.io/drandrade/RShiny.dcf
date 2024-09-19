@@ -1,0 +1,12 @@
+name: RShiny
+title: RShiny
+username: drandrade
+account: drandrade
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 12760658
+bundleId: 9120349
+url: https://drandrade.shinyapps.io/RShiny/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
