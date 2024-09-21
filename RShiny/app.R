@@ -52,8 +52,18 @@ all_data <- read_and_add_year(url)
 #### Build the User Interface (UI)
 
 ui <- fluidPage(
+  
+  tags$head(
+    # Add Open Graph meta tags for sharing on social media
+    tags$meta(property = "og:title", content = 'Rshiny Dashboard Analysis of Registred U.S. Baby Names'),
+    tags$meta(property = "og:description", content = 'This dashboard provides an interactive way to explore the popularity of baby names in the United States, as recorded by the U.S. Social Security Administration.'),
+    tags$meta(property = "og:image", content = 'https://www.momswhothink.com/wp-content/uploads/old-baby-picture-3-e1613427463319-360x229.jpg'),
+    tags$meta(property = "og:url", content = 'https://drandrade.shinyapps.io/shiny/'),
+    tags$meta(property = "og:type", content = 'website')
+  ),
+  
   # Create a dashboard title
-  titlePanel('U.S. Baby Name Popularity'),
+  titlePanel('U.S. Social Security Administration Baby Name Registration Analysis'),
   
   # Create the dashboard interface Outline
   sidebarLayout(
