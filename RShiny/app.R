@@ -42,7 +42,7 @@ read_and_add_year <- function(url) {
     return(combined_data)
     
   }, error = function(e) {
-    showNotification("Failed to load data: Check URL or your connection.", type = "error")
+    showNotification('Failed to load data: Check URL or your connection.', type = 'error')
     return(NULL)}
   )}
 
@@ -55,7 +55,7 @@ ui <- fluidPage(
   
   tags$head(
     # Add Open Graph meta tags for sharing on social media
-    tags$meta(property = "og:title", content = 'Rshiny Dashboard Analysis of Registred U.S. Baby Names'),
+    tags$meta(property = "og:title", content = 'Rshiny Dashboard Analysis of Registered U.S. Baby Names'),
     tags$meta(property = "og:description", content = 'This dashboard provides an interactive way to explore the popularity of baby names in the United States, as recorded by the U.S. Social Security Administration.'),
     tags$meta(property = "og:image", content = 'https://www.momswhothink.com/wp-content/uploads/old-baby-picture-3-e1613427463319-360x229.jpg'),
     tags$meta(property = "og:url", content = 'https://drandrade.shinyapps.io/shiny/'),
