@@ -1,5 +1,4 @@
 #rm(list=ls())
-
 # Load necessary packages
 library(shiny)
 library(ggplot2)
@@ -7,13 +6,11 @@ library(dplyr)
 library(scales)
 library(forecast)
 library(rsconnect)
-
 ################################################################################
 #### Retrieve the Social Security Administration Names Database
-
+################################################################################
 # Define the URL and the destination file path
 url <- 'https://www.ssa.gov/oact/babynames/names.zip'
-
 # Function to read data directly from the URL and add the year column
 read_and_add_year <- function(url) {
   temp <- tempfile()
@@ -40,19 +37,27 @@ read_and_add_year <- function(url) {
     combined_data <- do.call(rbind, data_list)
     # Return the combined data
     return(combined_data)
-    
   }, error = function(e) {
     showNotification('Failed to load data: Check URL or your connection.', type = 'error')
     return(NULL)}
   )}
-
 all_data <- read_and_add_year(url)
-
+# Helper function to calculate rank for a given name, gender, and year
+calculate_rank <- function(data, year, name, gender) {
+  year_data <- data %>%
+    filter(Year == year, Gender == gender) %>%
+    arrange(desc(Records))
+  rank <- which(year_data$Name == name)
+  if (length(rank) == 0) {
+    return(NA)
+  } else {
+    return(rank)
+  }
+}
 ################################################################################
 #### Build the User Interface (UI)
-
+################################################################################
 ui <- fluidPage(
-  
   tags$head(
     # Add Open Graph meta tags for sharing on social media
     tags$meta(property = "og:title", content = 'Rshiny Dashboard Analysis of Registered U.S. Baby Names'),
@@ -61,10 +66,8 @@ ui <- fluidPage(
     tags$meta(property = "og:url", content = 'https://drandrade.shinyapps.io/shiny/'),
     tags$meta(property = "og:type", content = 'website')
   ),
-  
   # Create a dashboard title
   titlePanel('U.S. Social Security Administration Baby Name Registration Analysis'),
-  
   # Create the dashboard interface Outline
   sidebarLayout(
     # Create the sidebar section for user input - name, gender, forecast length, year
@@ -82,7 +85,6 @@ ui <- fluidPage(
                    min = min(all_data$Year), # first year of name records
                    max = max(all_data$Year), # last year of name records
                    step = 1)), # increment by year
-    
     mainPanel(
       # Dashboard's description section
       htmlOutput('dashboard_explanation'),
@@ -93,12 +95,10 @@ ui <- fluidPage(
       # Dashboard's database source link section
       tags$div(HTML("Data source: <a href='https://www.ssa.gov/oact/babynames/names.zip' target='_blank'>U.S. Social Security Administration Baby Names Dataset</a>"))))
 )
-
 ################################################################################
-#### Define the Server Logic (UI output, data set filtering, forecasting, and plots)
-
+#### Define the Server Logic (UI output, data set filtering, forecasting, plots)
+################################################################################
 server <- function(input, output, session) {
-  
   output$dashboard_explanation <- renderUI({
     HTML("
       <p>This dashboard provides an interactive way to explore the popularity of baby names in the United States, as recorded by the U.S. Social Security Administration.</p>
@@ -106,7 +106,6 @@ server <- function(input, output, session) {
       <p>The plots will display the historical popularity of the name and its uniqueness compared to other names in the dataset.</p>
     ")
   })
-  
   # Gender choice dynamically updated based on unique categories in the database
   gender_choices <- reactive({
     unique(all_data$Gender)
@@ -123,6 +122,7 @@ server <- function(input, output, session) {
   })
   # Filter out the number of unique names for each year based on the input gender
   unique_names <- reactive({
+    req(input$gender)
     all_data %>%
       filter(Gender == input$gender) %>%
       group_by(Year) %>%
@@ -137,10 +137,30 @@ server <- function(input, output, session) {
       top_n(1, Records) %>%
       ungroup()
   })
+  # Get each year's least common name
+  bottom_names <- reactive({
+    req(input$gender)
+    all_data %>%
+      filter(Gender == input$gender) %>%
+      group_by(Year) %>%
+      top_n(-1, Records) %>%
+      ungroup()
+  })
+  # Calculate the ranks for min, max, and input years
+  # Calculate the ranks for min, max, and input years
+  ranks <- reactive({
+    req(input$name, input$gender, input$year)
+    # Calculate rank for the input year
+    rank_input <- calculate_rank(all_data, input$year, input$name, input$gender)
+    return(list(rank_input = rank_input))  # Ensure to return a list with rank_input
+  })
   # Render the forecast plot
   output$forecast <- renderPlot({
     # Reference the name and gender filtered database
     data <- filtered_data()
+    
+    rank_info <- ranks()
+    
     # Check in case there is no names for the gender selected
     if (nrow(data) == 0) {
       ggplot() +
@@ -206,18 +226,23 @@ server <- function(input, output, session) {
         theme(plot.title = element_text(size = 15, hjust = 0.5, color = 'darkgreen', face = 'bold'),
               axis.title = element_text(size = 12),
               plot.title.position = "plot")
-      
     }
   })
   # Render the unique names plot
   output$unique_names <- renderPlot({
+    rank_data <- ranks()
+    print(str(rank_data))
     # Reference the unique names filter data set
     unique_names_data <- unique_names()
     # Reference the top names filtered data set
     top_names_data <- top_names()
+    # Reference the bottom names filtered data set
+    bottom_names_data <- bottom_names()
     # Reference the namd and gender filtered data set
     filtered_data <- filtered_data()
-    # Creat the unique names line plot
+    # Ensure we have data
+    validate(need(nrow(unique_names_data) > 0, "No unique name data available."))
+    # Create the unique names line plot
     ggplot(unique_names_data, aes(x = Year, y = unique_records)) +
       # Set the plot theme
       theme_dark() +
@@ -228,17 +253,20 @@ server <- function(input, output, session) {
                  aes(x = Year, y = unique_records), 
                  color = 'white', size = 3.5) +
       annotate('text', x = min(unique_names_data$Year) + (max(unique_names_data$Year) - min(unique_names_data$Year)) * 0.1, 
-               y = max(unique_names_data$unique_records) * 0.9, 
+               y = max(unique_names_data$unique_records), 
                label = paste('In ', input$year, ':\n', 
-                             # Plot text of the number of records for name and gender and year of interest
-                             input$name, ' - ', filtered_data[filtered_data$Year == input$year, ]$Records, ' records', '\n',
-                             # Plot text of the most popular name for the year and gender of interest
-                             top_names_data[top_names_data$Year == input$year, ]$Name, ' - most popular name with ', 
-                             top_names_data[top_names_data$Year == input$year, ]$Records, ' records\n',
                              # Plot text of the number of unique names for the year and gender of interest
-                             'Unique names - ',unique_names_data[unique_names_data$Year == input$year, ]$unique_records, 
+                             '  Unique names - ', unique_names_data[unique_names_data$Year == input$year, ]$unique_records, '\n',
+                             # Plot text of the number of records for name and gender and year of interest
+                             '  ', input$name, ' - ranks ', ranks()$rank_input, ' of ', unique_names_data[unique_names_data$Year == input$year, ]$unique_records, ', with ', filtered_data[filtered_data$Year == input$year, ]$Records, ' records', '\n',
+                             # Plot text of the most popular name for the year and gender of interest
+                             '  ', head(top_names_data[top_names_data$Year == input$year, ]$Name, n = 1), ' - most popular name with ', 
+                             head(top_names_data[top_names_data$Year == input$year, ]$Records, n = 1), ' records\n',
+                             # Plot text of the least popular name for the year and gender of interest
+                             '  ', tail(bottom_names_data[bottom_names_data$Year == input$year, ]$Name, n = 1), ' - least popular name with ', 
+                             tail(bottom_names_data[bottom_names_data$Year == input$year, ]$Records, n = 1), ' records\n',
                              sep = ''),
-               vjust = 0.5, hjust = 0, color = 'white', size = 5) +
+               vjust = 1, hjust = 0, color = 'white', size = 5) +
       # Title and axis labels
       labs(title = paste('Unique Name Records Over Time (', input$gender, ')', sep = ''),
            y = paste('Unique Names (', input$gender, ')', sep = '')) +
@@ -255,8 +283,6 @@ server <- function(input, output, session) {
             plot.title.position = "plot")
   })
 }
-
 ################################################################################
 #### Run the RShiny App
-
 shinyApp(ui = ui, server = server)
