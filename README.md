@@ -5,5 +5,4 @@
 * R script for debugging and testing 
 * Jupyter Notebook markdown file - initial code, for the eventual intent to learn to replicate an interactive dashboard in Python
 
-https://doi.org/10.5281/zenodo.13910595
-
+https://zenodo.org/badge/DOI/10.5281/zenodo.13910595.svg
